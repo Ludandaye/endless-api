@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>endless-api</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    
+    <style>
+        /* 重置样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* 容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 头部 */
+        .header {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .header-subtitle {
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .api-key-info {
+            font-size: 14px;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .api-key-masked {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #495057;
+            font-size: 12px;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border: 1px solid #e9ecef;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        /* 状态指示器 */
+        .status {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .status-indicator.online {
+            background: #28a745;
+        }
+
+        .status-indicator.offline {
+            background: #dc3545;
+        }
+
+        .status-indicator.loading {
+            background: #6c757d;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 选项卡 */
+        .tabs {
+            margin-bottom: 24px;
+        }
+
+        .tabs-nav {
+            display: flex;
+            gap: 4px;
+            background: white;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #6c757d;
+        }
+
+        .tab-button.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #f8f9fa;
+        }
+
+        /* 面板 */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 网格布局 */
+        .grid {
+            display: grid;
+            gap: 24px;
+            grid-template-columns: 2fr 1fr;
+        }
+
+        /* 卡片 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .clear-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .clear-btn:hover {
+            background: #c82333;
+        }
+
+        /* 聊天消息 */
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            background: #f8f9fa;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            background: white;
+            border: 1px solid #e9ecef;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message-role {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .message-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .chat-placeholder {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        /* 输入组 */
+        .input-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        /* 表单组 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 6px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            outline: none;
+        }
+
+        .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .form-textarea:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        /* 结果区域 */
+        .result-area {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            background: #f8f9fa;
+        }
+
+        .result-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .result-area::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .result-area::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .result-placeholder {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .result-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .result-loading {
+            text-align: center;
+            color: #007bff;
+        }
+
+        .result-error {
+            color: #dc3545;
+        }
+
+        /* 工具类 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 批量处理样式 */
+        .batch-textarea {
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .batch-controls {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .batch-results {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            min-height: 300px;
+        }
+
+        .batch-results:focus {
+            outline: 2px solid #007bff;
+            outline-offset: 2px;
+        }
+
+        .batch-progress {
+            margin: 16px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #6c757d;
+            text-align: center;
+        }
+
+        .batch-stats {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .batch-stats h4 {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .form-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-copy {
+            background: #6c757d;
+            color: white;
+            font-size: 12px;
+            padding: 4px 8px;
+            margin-left: 12px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-copy:hover {
+            background: #545b62;
+            transform: translateY(-1px);
+        }
+
+        /* 优化标签布局 */
+        .form-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        /* 聊天操作区域 */
+        .chat-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 文件上传区域 */
+        .file-upload-area {
+            margin: 16px 0;
+        }
+
+        .file-upload-zone {
+            border: 2px dashed #e9ecef;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload-zone:hover {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+
+        .file-upload-zone.dragover {
+            border-color: #007bff;
+            background: #e3f2fd;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .upload-text p {
+            margin: 8px 0;
+            color: #6c757d;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .upload-tips {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .upload-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .upload-btn:hover {
+            color: #0056b3;
+        }
+
+        /* 上传文件预览 */
+        .uploaded-files {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .uploaded-files h4 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .files-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .file-count {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .file-size-total {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .file-item.image {
+            position: relative;
+        }
+
+        .file-item .file-icon {
+            font-size: 16px;
+        }
+
+        .file-item .file-name {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-item .file-size {
+            font-size: 11px;
+            color: #6c757d;
+        }
+
+        .file-item .remove-file {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-item .remove-file:hover {
+            background: #c82333;
+        }
+
+        /* 图片预览 */
+        .image-preview {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        /* 文件操作区域 */
+        .file-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        /* 聊天中的文件预览 */
+        .file-preview-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .image-preview-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .tabs-nav {
+                flex-direction: column;
+                gap: 2px;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="header-info">
+                <h1 class="header-title">endless-api</h1>
+                <p class="header-subtitle">OpenAI API 调用平台</p>
+            </div>
+            <div class="user-info">
+                <div class="api-key-info">
+                    <span>API密钥: </span>
+                    <span id="apiKeyMasked" class="api-key-masked">加载中...</span>
+                </div>
+                <button onclick="logout()" class="logout-btn">退出登录</button>
+            </div>
+        </header>
+
+        <!-- 状态指示器 -->
+        <div class="status">
+            <div id="status-indicator" class="status-indicator loading"></div>
+            <span id="status-text">检查系统状态中...</span>
+        </div>
+
+        <!-- 选项卡 -->
+        <div class="tabs">
+            <nav class="tabs-nav">
+                <button onclick="switchTab('chat')" id="chat-tab" class="tab-button active">
+                    💬 聊天对话
+                </button>
+                <button onclick="switchTab('completion')" id="completion-tab" class="tab-button">
+                    📝 文本补全
+                </button>
+                <button onclick="switchTab('json-batch')" id="json-batch-tab" class="tab-button">
+                    📊 JSON批量处理
+                </button>
+            </nav>
+        </div>
+
+        <!-- 聊天对话面板 -->
+        <div id="chat-panel" class="tab-content active">
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">聊天对话</h2>
+                        <div class="chat-actions">
+                            <button onclick="copyChatHistory()" id="copy-chat-btn" class="btn btn-copy" style="display: none;">
+                                📋 复制对话
+                            </button>
+                            <button onclick="clearHistory()" class="clear-btn">清除历史</button>
+                        </div>
+                    </div>
+                    
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="chat-placeholder">开始对话...</div>
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area" id="file-upload-area">
+                        <div class="file-upload-zone" id="file-upload-zone">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">
+                                <p><strong>拖拽文件到此处</strong> 或 <button class="upload-btn" onclick="triggerFileSelect()">选择文件</button></p>
+                                <p class="upload-hint">支持图片识别 (jpg, png, gif, webp) 和文本文件 (txt, md, doc, pdf)</p>
+                                <p class="upload-tips">💡 快捷键: Ctrl+U 上传文件 | ESC 清除文件 | 最大10MB</p>
+                            </div>
+                            <input type="file" id="file-input" multiple accept="image/*,.txt,.md,.doc,.docx,.pdf" style="display: none;">
+                        </div>
+                        
+                        <!-- 上传文件预览 -->
+                        <div class="uploaded-files" id="uploaded-files" style="display: none;">
+                            <div class="files-header">
+                                <h4>已上传文件: <span id="file-count">0</span></h4>
+                                <span class="file-size-total" id="file-size-total">总大小: 0 B</span>
+                            </div>
+                            <div class="file-list" id="file-list"></div>
+                            <div class="file-actions">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="keep-files-after-send" checked>
+                                    发送后保留文件
+                                </label>
+                                <button class="btn btn-warning btn-sm" onclick="clearUploadedFiles()">清除所有文件</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="text" id="chat-input" placeholder="输入您的消息..." class="form-input">
+                        <button onclick="sendChatMessage()" id="send-chat-btn" class="btn btn-primary">发送</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">聊天设置</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">模型</label>
+                        <select id="chat-model" class="form-select">
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">最大Token数</label>
+                        <input type="number" id="chat-max-tokens" value="1000" min="1" max="4000" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">温度 (0-2)</label>
+                        <input type="number" id="chat-temperature" value="0.7" min="0" max="2" step="0.1" class="form-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文本补全面板 -->
+        <div id="completion-panel" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h2 class="card-title">文本补全</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">提示文本</label>
+                        <textarea id="completion-prompt" placeholder="输入您的提示文本..." class="form-textarea"></textarea>
+                    </div>
+                    
+                    <button onclick="generateCompletion()" id="generate-completion-btn" class="btn btn-success btn-full">
+                        生成补全
+                    </button>
+                    
+                    <div class="form-group">
+                        <label class="form-label">生成结果
+                            <button onclick="copyCompletionResult()" id="copy-completion-btn" class="btn btn-copy" style="display: none;">
+                                📋 复制结果
+                            </button>
+                        </label>
+                        <div id="completion-result" class="result-area">
+                            <div class="result-placeholder">补全结果将显示在这里...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">补全设置</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">模型</label>
+                        <select id="completion-model" class="form-select">
+                            <option value="gpt-3.5-turbo-instruct">GPT-3.5 Turbo Instruct</option>
+                            <option value="davinci-002">Davinci 002</option>
+                            <option value="babbage-002">Babbage 002</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">最大Token数</label>
+                        <input type="number" id="completion-max-tokens" value="1000" min="1" max="4000" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">温度 (0-2)</label>
+                        <input type="number" id="completion-temperature" value="0.7" min="0" max="2" step="0.1" class="form-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- JSON批量处理面板 -->
+        <div id="json-batch-panel" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h2 class="card-title">JSON批量处理</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">JSON提示列表</label>
+                        <textarea 
+                            id="json-batch-input" 
+                            placeholder='输入JSON格式的提示列表，例如：
+
+[
+  {"prompt": "翻译成英文：你好世界"},
+  {"prompt": "写一首关于春天的诗"},
+  {"prompt": "解释什么是人工智能"},
+  {"prompt": "计算 123 + 456 等于多少"}
+]
+
+注意：
+1. 外层必须是方括号 []
+2. 每个对象用大括号 {}
+3. prompt字段必须是字符串
+4. 对象之间用逗号分隔' 
+                            class="form-textarea batch-textarea"></textarea>
+                    </div>
+                    
+                    <div class="batch-controls">
+                        <button onclick="validateJsonInput()" class="btn btn-secondary">
+                            ✅ 验证JSON格式
+                        </button>
+                        <button onclick="processBatch()" id="process-batch-btn" class="btn btn-success">
+                            🚀 开始批量处理
+                        </button>
+                        <button onclick="clearBatchResults()" class="btn btn-warning">
+                            🗑️ 清空结果
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">处理结果
+                            <button onclick="copyBatchResults()" id="copy-results-btn" class="btn btn-copy" style="display: none;">
+                                📋 复制结果
+                            </button>
+                        </label>
+                        <div id="batch-results" class="result-area batch-results" tabindex="0">
+                            <div class="result-placeholder">批量处理结果将显示在这里...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="batch-progress" id="batch-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">处理中... 0/0</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">批量处理设置</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">模型</label>
+                        <select id="batch-model" class="form-select">
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">最大Token数</label>
+                        <input type="number" id="batch-max-tokens" value="1000" min="1" max="4000" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">温度 (0-2)</label>
+                        <input type="number" id="batch-temperature" value="0.7" min="0" max="2" step="0.1" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">并发数量</label>
+                        <input type="number" id="batch-concurrent" value="3" min="1" max="10" class="form-input">
+                        <small class="form-text">同时处理的请求数量（建议1-5）</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">请求间隔 (毫秒)</label>
+                        <input type="number" id="batch-delay" value="1000" min="0" max="5000" step="100" class="form-input">
+                        <small class="form-text">请求之间的延迟时间</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="batch-include-metadata" checked>
+                                包含元数据（耗时、Token等）
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="batch-stats" id="batch-stats" style="display: none;">
+                        <h4>统计信息</h4>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">总数量:</span>
+                                <span id="stat-total">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">成功:</span>
+                                <span id="stat-success">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">失败:</span>
+                                <span id="stat-error">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">总Token:</span>
+                                <span id="stat-tokens">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 主页面JavaScript
+        let isLoading = false;
+        let currentTab = 'chat';
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化页面
+            initializePage();
+            
+            // 绑定事件监听器
+            bindEventListeners();
+            
+            // 检查系统状态
+            checkStatus();
+            
+            // 初始化文件上传功能
+            initFileUpload();
+        });
+
+        // 初始化页面
+        function initializePage() {
+            // 设置默认选项卡
+            switchTab('chat');
+            
+            // 初始化聊天界面
+            initializeChatInterface();
+        }
+
+        // 绑定事件监听器
+        function bindEventListeners() {
+            // 聊天输入框回车键监听
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendChatMessage();
+                    }
+                });
+            }
+            
+            // 补全文本区域快捷键监听
+            const completionPrompt = document.getElementById('completion-prompt');
+            if (completionPrompt) {
+                completionPrompt.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey && e.key === 'Enter') {
+                        e.preventDefault();
+                        generateCompletion();
+                    }
+                });
+            }
+        }
+
+        // 初始化聊天界面
+        function initializeChatInterface() {
+            const messagesDiv = document.getElementById('chat-messages');
+            if (messagesDiv) {
+                messagesDiv.innerHTML = '<div class="chat-placeholder">开始对话...</div>';
+            }
+        }
+
+        // 检查系统状态
+        async function checkStatus() {
+            try {
+                const response = await axios.get('/api/status');
+                const status = response.data;
+                
+                updateStatusIndicator(status);
+                updateUserInfo(status);
+                
+                if (!status.logged_in) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('状态检查失败:', error);
+                updateStatusIndicator({ 
+                    status: 'error', 
+                    logged_in: false 
+                });
+            }
+        }
+
+        // 更新状态指示器
+        function updateStatusIndicator(status) {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            
+            if (!indicator || !statusText) return;
+            
+            indicator.classList.remove('online', 'offline', 'loading');
+            
+            if (status.logged_in && status.status === 'running') {
+                indicator.classList.add('online');
+                statusText.textContent = '系统正常运行，已登录';
+            } else if (!status.logged_in) {
+                indicator.classList.add('offline');
+                statusText.textContent = '未登录';
+            } else {
+                indicator.classList.add('offline');
+                statusText.textContent = '无法连接到服务器';
+            }
+        }
+
+        // 更新用户信息
+        function updateUserInfo(status) {
+            const apiKeyMasked = document.getElementById('apiKeyMasked');
+            
+            if (!apiKeyMasked) return;
+            
+            if (status.logged_in && status.api_key_masked) {
+                apiKeyMasked.textContent = status.api_key_masked;
+            } else {
+                apiKeyMasked.textContent = '未登录';
+            }
+        }
+
+        // 退出登录
+        async function logout() {
+            try {
+                await axios.post('/logout');
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('退出登录失败:', error);
+                alert('退出登录失败: ' + (error.response?.data?.error || error.message));
+            }
+        }
+
+        // 切换选项卡
+        function switchTab(tabName) {
+            // 隐藏所有内容面板
+            document.querySelectorAll('.tab-content').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // 重置所有选项卡按钮样式
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // 显示选中的面板
+            const targetPanel = document.getElementById(tabName + '-panel');
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+            
+            // 激活选中的选项卡按钮
+            const activeTab = document.getElementById(tabName + '-tab');
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+            
+            // 更新当前选项卡
+            currentTab = tabName;
+            
+            // 选项卡切换后的处理
+            onTabSwitch(tabName);
+        }
+
+        // 选项卡切换后的处理
+        function onTabSwitch(tabName) {
+            if (tabName === 'chat') {
+                const chatInput = document.getElementById('chat-input');
+                if (chatInput) {
+                    chatInput.focus();
+                }
+            } else if (tabName === 'completion') {
+                const completionPrompt = document.getElementById('completion-prompt');
+                if (completionPrompt) {
+                    completionPrompt.focus();
+                }
+            }
+        }
+
+        // 发送聊天消息
+        async function sendChatMessage() {
+            if (isLoading) return;
+            
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            // 检查是否有消息或文件
+            if (!message && uploadedFiles.length === 0) {
+                alert('请输入消息或上传文件');
+                return;
+            }
+            
+            input.value = '';
+            setLoading(true);
+            
+            // 构建消息内容
+            let fullMessage = message;
+            const chatSettings = getChatSettings();
+            
+            // 如果有上传的文件，添加到消息中
+            if (uploadedFiles.length > 0) {
+                let fileContent = '';
+                
+                for (const file of uploadedFiles) {
+                    if (file.isImage) {
+                        // 图片识别
+                        fileContent += `\n\n[图片: ${file.name}]\n`;
+                        fileContent += `请分析这张图片，描述你看到的内容。`;
+                        
+                        // 对于图片，需要使用支持视觉的模型
+                        if (chatSettings.model === 'gpt-3.5-turbo') {
+                            chatSettings.model = 'gpt-4o'; // 自动切换到支持视觉的模型
+                        }
+                    } else {
+                        // 文本文件内容
+                        fileContent += `\n\n[文件: ${file.name}]\n`;
+                        fileContent += `文件内容:\n${file.content}\n`;
+                    }
+                }
+                
+                if (message) {
+                    fullMessage = `${message}\n${fileContent}`;
+                } else {
+                    fullMessage = `请处理以下文件内容:${fileContent}`;
+                }
+            }
+            
+            // 显示用户消息（包含文件预览）
+            addMessageToChat('user', message || '发送了文件', uploadedFiles);
+            
+            try {
+                const requestData = {
+                    message: fullMessage,
+                    ...chatSettings
+                };
+                
+                // 如果有图片，添加图片数据
+                const imageFiles = uploadedFiles.filter(file => file.isImage);
+                if (imageFiles.length > 0) {
+                    requestData.images = imageFiles.map(file => ({
+                        name: file.name,
+                        data: file.base64
+                    }));
+                }
+                
+                const response = await axios.post('/api/chat', requestData);
+                
+                addMessageToChat('assistant', response.data.response);
+                
+                // 根据选项决定是否保留文件
+                if (!document.getElementById('keep-files-after-send').checked) {
+                    clearUploadedFiles();
+                }
+                
+            } catch (error) {
+                handleApiError(error, 'sendChatMessage');
+                addMessageToChat('error', '错误: ' + getErrorMessage(error));
+            } finally {
+                setLoading(false);
+                input.focus();
+            }
+        }
+
+        // 获取聊天设置
+        function getChatSettings() {
+            return {
+                model: getElementValue('chat-model') || 'gpt-3.5-turbo',
+                max_tokens: parseInt(getElementValue('chat-max-tokens')) || 1000,
+                temperature: parseFloat(getElementValue('chat-temperature')) || 0.7
+            };
+        }
+
+        // 获取补全设置
+        function getCompletionSettings() {
+            return {
+                model: getElementValue('completion-model') || 'gpt-3.5-turbo-instruct',
+                max_tokens: parseInt(getElementValue('completion-max-tokens')) || 1000,
+                temperature: parseFloat(getElementValue('completion-temperature')) || 0.7
+            };
+        }
+
+        // 安全获取元素值
+        function getElementValue(id) {
+            const element = document.getElementById(id);
+            return element ? element.value : null;
+        }
+
+        // 添加消息到聊天窗口
+        function addMessageToChat(role, content, files = []) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const copyBtn = document.getElementById('copy-chat-btn');
+            
+            if (!messagesDiv) return;
+            
+            const placeholder = messagesDiv.querySelector('.chat-placeholder');
+            if (placeholder) {
+                messagesDiv.innerHTML = '';
+            }
+            
+            const messageDiv = createMessageElement(role, content, files);
+            messagesDiv.appendChild(messageDiv);
+            
+            scrollToBottom(messagesDiv);
+            
+            // 显示复制按钮（当有消息时）
+            if (copyBtn) {
+                copyBtn.style.display = 'inline-block';
+            }
+        }
+
+        // 创建消息元素
+        function createMessageElement(role, content, files) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const roleSpan = document.createElement('div');
+            roleSpan.className = 'message-role';
+            roleSpan.textContent = getRoleDisplayName(role);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (files.length > 0) {
+                contentDiv.innerHTML = `<strong>文件预览:</strong><br>`;
+                files.forEach(file => {
+                    contentDiv.innerHTML += `<div class="file-preview-item">
+                        ${file.isImage ? `<img src="${file.base64}" alt="${file.name}" class="image-preview-preview">` : `
+                            <span class="file-icon">${file.isImage ? '🖼️' : '📄'}</span>
+                            <span class="file-name">${file.name}</span>
+                            <span class="file-size">(${formatFileSize(file.size)})</span>
+                        `}
+                    </div>`;
+                });
+            } else {
+                contentDiv.textContent = content;
+            }
+            
+            messageDiv.appendChild(roleSpan);
+            messageDiv.appendChild(contentDiv);
+            
+            return messageDiv;
+        }
+
+        // 获取角色显示名称
+        function getRoleDisplayName(role) {
+            const roleNames = {
+                'user': '用户',
+                'assistant': 'AI助手',
+                'error': '错误'
+            };
+            return roleNames[role] || role;
+        }
+
+        // 滚动到底部
+        function scrollToBottom(element) {
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+            }
+        }
+
+        // 清除聊天历史
+        async function clearHistory() {
+            try {
+                await axios.post('/api/clear_history');
+                
+                const messagesDiv = document.getElementById('chat-messages');
+                const copyBtn = document.getElementById('copy-chat-btn');
+                
+                if (messagesDiv) {
+                    messagesDiv.innerHTML = '<div class="chat-placeholder">聊天历史已清除，开始新的对话...</div>';
+                }
+                
+                // 隐藏复制按钮
+                if (copyBtn) {
+                    copyBtn.style.display = 'none';
+                }
+                
+            } catch (error) {
+                handleApiError(error, 'clearHistory');
+                alert('清除历史失败: ' + getErrorMessage(error));
+            }
+        }
+
+        // 生成文本补全
+        async function generateCompletion() {
+            if (isLoading) return;
+            
+            const promptElement = document.getElementById('completion-prompt');
+            const prompt = promptElement.value.trim();
+            
+            if (!prompt) {
+                alert('请输入提示文本');
+                return;
+            }
+            
+            setLoading(true);
+            
+            const resultDiv = document.getElementById('completion-result');
+            const copyBtn = document.getElementById('copy-completion-btn');
+            
+            if (resultDiv) {
+                resultDiv.innerHTML = '<div class="result-loading">生成中...</div>';
+            }
+            
+            try {
+                const completionSettings = getCompletionSettings();
+                
+                const response = await axios.post('/api/completion', {
+                    prompt: prompt,
+                    ...completionSettings
+                });
+                
+                if (resultDiv) {
+                    resultDiv.innerHTML = `<div class="result-content">${response.data.completion}</div>`;
+                }
+                
+                // 显示复制按钮
+                if (copyBtn) {
+                    copyBtn.style.display = 'inline-block';
+                }
+                
+            } catch (error) {
+                handleApiError(error, 'generateCompletion');
+                if (resultDiv) {
+                    resultDiv.innerHTML = `<div class="result-error">错误: ${getErrorMessage(error)}</div>`;
+                }
+                
+                // 隐藏复制按钮
+                if (copyBtn) {
+                    copyBtn.style.display = 'none';
+                }
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 处理API错误
+        function handleApiError(error, context) {
+            console.error(`${context} error:`, error);
+            
+            if (error.response?.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+        }
+
+        // 获取错误消息
+        function getErrorMessage(error) {
+            if (error.response?.data?.error) {
+                return error.response.data.error;
+            } else if (error.request) {
+                return '网络连接失败';
+            } else {
+                return error.message || '未知错误';
+            }
+        }
+
+        // 设置加载状态
+        function setLoading(loading) {
+            isLoading = loading;
+            
+            const buttons = [
+                'send-chat-btn',
+                'generate-completion-btn',
+                'process-batch-btn'
+            ];
+            
+            buttons.forEach(id => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.disabled = loading;
+                }
+            });
+            
+            const inputs = [
+                'chat-input',
+                'completion-prompt',
+                'json-batch-input'
+            ];
+            
+            inputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.disabled = loading;
+                }
+            });
+        }
+
+        // JSON批量处理功能
+        let batchStats = {
+            total: 0,
+            success: 0,
+            error: 0,
+            tokens: 0
+        };
+
+        // 验证JSON输入格式
+        function validateJsonInput() {
+            console.log('开始验证JSON格式...');
+            
+            const inputElement = document.getElementById('json-batch-input');
+            if (!inputElement) {
+                console.error('找不到json-batch-input元素');
+                alert('❌ 页面元素错误，请刷新页面重试');
+                return false;
+            }
+            
+            const input = inputElement.value.trim();
+            console.log('输入内容:', input);
+            
+            if (!input) {
+                alert('请输入JSON内容');
+                return false;
+            }
+            
+            try {
+                console.log('开始解析JSON...');
+                const data = JSON.parse(input);
+                console.log('JSON解析成功:', data);
+                
+                if (!Array.isArray(data)) {
+                    alert('JSON内容必须是数组格式\n\n正确格式示例:\n[\n  {"prompt": "你的提示1"},\n  {"prompt": "你的提示2"}\n]');
+                    return false;
+                }
+                
+                if (data.length === 0) {
+                    alert('JSON数组不能为空');
+                    return false;
+                }
+                
+                // 验证每个项目是否有prompt字段
+                for (let i = 0; i < data.length; i++) {
+                    const item = data[i];
+                    console.log(`验证第${i + 1}项:`, item);
+                    
+                    if (!item || typeof item !== 'object') {
+                        alert(`第${i + 1}个项目必须是对象格式\n\n正确格式: {"prompt": "你的提示"}`);
+                        return false;
+                    }
+                    
+                    if (!item.hasOwnProperty('prompt')) {
+                        alert(`第${i + 1}个项目缺少prompt字段\n\n正确格式: {"prompt": "你的提示"}`);
+                        return false;
+                    }
+                    
+                    if (typeof item.prompt !== 'string' || item.prompt.trim() === '') {
+                        alert(`第${i + 1}个项目的prompt字段必须是非空字符串\n\n当前值: ${JSON.stringify(item.prompt)}`);
+                        return false;
+                    }
+                }
+                
+                console.log('验证通过!');
+                alert(`✅ JSON格式验证通过！\n\n共有 ${data.length} 个提示待处理\n\n点击"开始批量处理"按钮开始处理`);
+                return true;
+                
+            } catch (error) {
+                console.error('JSON解析错误:', error);
+                alert(`❌ JSON格式错误:\n\n${error.message}\n\n请检查:\n1. 是否有多余的逗号\n2. 引号是否配对\n3. 括号是否配对\n4. 是否是标准JSON格式`);
+                return false;
+            }
+        }
+
+        // 批量处理主函数
+        async function processBatch() {
+            if (isLoading) return;
+            
+            if (!validateJsonInput()) {
+                return;
+            }
+            
+            const input = document.getElementById('json-batch-input').value.trim();
+            const data = JSON.parse(input);
+            
+            // 初始化统计信息
+            batchStats = {
+                total: data.length,
+                success: 0,
+                error: 0,
+                tokens: 0
+            };
+            
+            // 显示进度条和统计信息
+            showBatchProgress();
+            updateBatchStats();
+            
+            // 清空结果区域
+            const resultsDiv = document.getElementById('batch-results');
+            resultsDiv.innerHTML = '';
+            
+            setLoading(true);
+            
+            try {
+                const settings = getBatchSettings();
+                const results = await processBatchWithConcurrency(data, settings);
+                
+                // 显示最终结果
+                displayBatchResults(results, settings.includeMetadata);
+                
+            } catch (error) {
+                console.error('批量处理失败:', error);
+                alert('批量处理失败: ' + error.message);
+            } finally {
+                setLoading(false);
+                hideBatchProgress();
+            }
+        }
+
+        // 获取批量处理设置
+        function getBatchSettings() {
+            return {
+                model: getElementValue('batch-model') || 'gpt-3.5-turbo',
+                max_tokens: parseInt(getElementValue('batch-max-tokens')) || 1000,
+                temperature: parseFloat(getElementValue('batch-temperature')) || 0.7,
+                concurrent: parseInt(getElementValue('batch-concurrent')) || 3,
+                delay: parseInt(getElementValue('batch-delay')) || 1000,
+                includeMetadata: document.getElementById('batch-include-metadata').checked
+            };
+        }
+
+        // 并发处理批量请求
+        async function processBatchWithConcurrency(data, settings) {
+            const results = [];
+            const chunks = chunkArray(data, settings.concurrent);
+            
+            for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+                const chunk = chunks[chunkIndex];
+                const chunkPromises = chunk.map(async (item, itemIndex) => {
+                    const globalIndex = chunkIndex * settings.concurrent + itemIndex;
+                    
+                    try {
+                        const startTime = Date.now();
+                        const result = await callChatAPI(item.prompt, settings);
+                        const endTime = Date.now();
+                        
+                        const processedResult = {
+                            index: globalIndex,
+                            prompt: item.prompt,
+                            response: result.response,
+                            success: true,
+                            duration: endTime - startTime,
+                            tokens: result.usage?.total_tokens || 0,
+                            model: result.model
+                        };
+                        
+                        batchStats.success++;
+                        batchStats.tokens += processedResult.tokens;
+                        
+                        return processedResult;
+                        
+                    } catch (error) {
+                        console.error(`处理第${globalIndex + 1}项失败:`, error);
+                        
+                        batchStats.error++;
+                        
+                        return {
+                            index: globalIndex,
+                            prompt: item.prompt,
+                            success: false,
+                            error: error.message || '处理失败'
+                        };
+                    } finally {
+                        updateBatchProgress(globalIndex + 1, data.length);
+                        updateBatchStats();
+                    }
+                });
+                
+                // 等待当前chunk处理完成
+                const chunkResults = await Promise.all(chunkPromises);
+                results.push(...chunkResults);
+                
+                // 在chunks之间添加延迟
+                if (chunkIndex < chunks.length - 1 && settings.delay > 0) {
+                    await sleep(settings.delay);
+                }
+            }
+            
+            return results;
+        }
+
+        // 调用聊天API
+        async function callChatAPI(prompt, settings) {
+            const response = await axios.post('/api/chat', {
+                message: prompt,
+                model: settings.model,
+                max_tokens: settings.max_tokens,
+                temperature: settings.temperature
+            });
+            
+            return response.data;
+        }
+
+        // 显示批量处理结果
+        function displayBatchResults(results, includeMetadata) {
+            const resultsDiv = document.getElementById('batch-results');
+            const copyBtn = document.getElementById('copy-results-btn');
+            
+            const jsonResults = results.map(result => {
+                const baseResult = {
+                    index: result.index + 1,
+                    prompt: result.prompt,
+                    success: result.success
+                };
+                
+                if (result.success) {
+                    baseResult.response = result.response;
+                    
+                    if (includeMetadata) {
+                        baseResult.metadata = {
+                            duration_ms: result.duration,
+                            tokens_used: result.tokens,
+                            model: result.model
+                        };
+                    }
+                } else {
+                    baseResult.error = result.error;
+                }
+                
+                return baseResult;
+            });
+            
+            resultsDiv.innerHTML = `<div class="result-content">${JSON.stringify(jsonResults, null, 2)}</div>`;
+            
+            // 显示复制按钮
+            if (copyBtn) {
+                copyBtn.style.display = 'inline-block';
+            }
+        }
+
+        // 清空批量处理结果
+        function clearBatchResults() {
+            const resultsDiv = document.getElementById('batch-results');
+            const copyBtn = document.getElementById('copy-results-btn');
+            
+            resultsDiv.innerHTML = '<div class="result-placeholder">批量处理结果将显示在这里...</div>';
+            
+            // 隐藏复制按钮
+            if (copyBtn) {
+                copyBtn.style.display = 'none';
+            }
+            
+            hideBatchProgress();
+            hideBatchStats();
+        }
+
+        // 显示批量处理进度
+        function showBatchProgress() {
+            const progressDiv = document.getElementById('batch-progress');
+            progressDiv.style.display = 'block';
+            updateBatchProgress(0, batchStats.total);
+        }
+
+        // 更新批量处理进度
+        function updateBatchProgress(current, total) {
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            const percentage = total > 0 ? (current / total) * 100 : 0;
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `处理中... ${current}/${total}`;
+        }
+
+        // 隐藏批量处理进度
+        function hideBatchProgress() {
+            const progressDiv = document.getElementById('batch-progress');
+            progressDiv.style.display = 'none';
+        }
+
+        // 显示批量处理统计
+        function showBatchStats() {
+            const statsDiv = document.getElementById('batch-stats');
+            statsDiv.style.display = 'block';
+        }
+
+        // 更新批量处理统计
+        function updateBatchStats() {
+            showBatchStats();
+            
+            document.getElementById('stat-total').textContent = batchStats.total;
+            document.getElementById('stat-success').textContent = batchStats.success;
+            document.getElementById('stat-error').textContent = batchStats.error;
+            document.getElementById('stat-tokens').textContent = batchStats.tokens;
+        }
+
+        // 隐藏批量处理统计
+        function hideBatchStats() {
+            const statsDiv = document.getElementById('batch-stats');
+            statsDiv.style.display = 'none';
+        }
+
+        // 工具函数：将数组分割成指定大小的块
+        function chunkArray(array, chunkSize) {
+            const chunks = [];
+            for (let i = 0; i < array.length; i += chunkSize) {
+                chunks.push(array.slice(i, i + chunkSize));
+            }
+            return chunks;
+        }
+
+        // 工具函数：延迟执行
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 文件上传功能
+        let uploadedFiles = [];
+
+        // 页面初始化时绑定文件上传事件
+        function initFileUpload() {
+            const fileInput = document.getElementById('file-input');
+            const uploadZone = document.getElementById('file-upload-zone');
+            
+            // 文件选择事件
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 拖拽事件
+            uploadZone.addEventListener('dragover', handleDragOver);
+            uploadZone.addEventListener('dragleave', handleDragLeave);
+            uploadZone.addEventListener('drop', handleDrop);
+            uploadZone.addEventListener('click', triggerFileSelect);
+        }
+
+        // 触发文件选择
+        function triggerFileSelect() {
+            document.getElementById('file-input').click();
+        }
+
+        // 处理文件选择
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            processFiles(files);
+        }
+
+        // 处理拖拽悬停
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        // 处理拖拽离开
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        // 处理文件拖拽放下
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = Array.from(event.dataTransfer.files);
+            processFiles(files);
+        }
+
+        // 处理文件
+        async function processFiles(files) {
+            let successCount = 0;
+            for (const file of files) {
+                if (validateFile(file)) {
+                    const fileData = await readFile(file);
+                    uploadedFiles.push(fileData);
+                    successCount++;
+                }
+            }
+            
+            if (successCount > 0) {
+                updateFileDisplay();
+                showUploadSuccess(successCount);
+                
+                // 自动聚焦到输入框
+                setTimeout(() => {
+                    document.getElementById('chat-input').focus();
+                }, 500);
+            }
+        }
+
+        // 验证文件
+        function validateFile(file) {
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            const allowedTypes = [
+                'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                'text/plain', 'text/markdown', 'application/pdf',
+                'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            ];
+            
+            if (file.size > maxSize) {
+                alert(`文件 "${file.name}" 超过10MB大小限制`);
+                return false;
+            }
+            
+            if (!allowedTypes.includes(file.type) && !file.name.match(/\.(txt|md)$/i)) {
+                alert(`文件 "${file.name}" 格式不支持`);
+                return false;
+            }
+            
+            // 检查是否已经上传过相同文件
+            const existingFile = uploadedFiles.find(f => f.name === file.name && f.size === file.size);
+            if (existingFile) {
+                alert(`⚠️ 文件 "${file.name}" 已经上传过了\n如需重新上传，请先删除现有文件`);
+                return false;
+            }
+            
+            return true;
+        }
+
+        // 读取文件
+        async function readFile(file) {
+            const fileData = {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                isImage: file.type.startsWith('image/'),
+                content: null,
+                base64: null
+            };
+            
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                
+                if (fileData.isImage) {
+                    reader.onload = (e) => {
+                        fileData.base64 = e.target.result;
+                        resolve(fileData);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.onload = (e) => {
+                        fileData.content = e.target.result;
+                        resolve(fileData);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        // 更新文件显示
+        function updateFileDisplay() {
+            const uploadedFilesDiv = document.getElementById('uploaded-files');
+            const fileList = document.getElementById('file-list');
+            const fileCountSpan = document.getElementById('file-count');
+            const fileSizeTotalSpan = document.getElementById('file-size-total');
+            
+            if (uploadedFiles.length === 0) {
+                uploadedFilesDiv.style.display = 'none';
+                fileCountSpan.textContent = '0';
+                fileSizeTotalSpan.textContent = '总大小: 0 B';
+                return;
+            }
+            
+            uploadedFilesDiv.style.display = 'block';
+            fileList.innerHTML = '';
+            
+            let totalSize = 0;
+            uploadedFiles.forEach(file => {
+                totalSize += file.size;
+                const fileItem = createFileItem(file);
+                fileList.appendChild(fileItem);
+            });
+            
+            fileCountSpan.textContent = uploadedFiles.length;
+            fileSizeTotalSpan.textContent = `总大小: ${formatFileSize(totalSize)}`;
+        }
+
+        // 创建文件项目
+        function createFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = `file-item ${file.isImage ? 'image' : ''}`;
+            
+            let fileIcon = '📄';
+            if (file.isImage) fileIcon = '🖼️';
+            else if (file.type.includes('pdf')) fileIcon = '📕';
+            else if (file.name.match(/\.(doc|docx)$/i)) fileIcon = '📄';
+            else if (file.name.match(/\.(txt|md)$/i)) fileIcon = '📃';
+            
+            fileItem.innerHTML = `
+                ${file.isImage ? `<img src="${file.base64}" class="image-preview" alt="${file.name}">` : ''}
+                <span class="file-icon">${fileIcon}</span>
+                <div class="file-info">
+                    <div class="file-name" title="${file.name}">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                </div>
+                <button class="remove-file" onclick="removeFile('${file.id}')" title="删除文件">×</button>
+            `;
+            
+            return fileItem;
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 删除文件
+        function removeFile(fileId) {
+            uploadedFiles = uploadedFiles.filter(file => file.id != fileId);
+            updateFileDisplay();
+        }
+
+        // 清除所有文件
+        function clearUploadedFiles() {
+            if (uploadedFiles.length > 0) {
+                const confirmed = confirm(`确定要清除所有 ${uploadedFiles.length} 个文件吗？`);
+                if (!confirmed) return;
+            }
+            
+            uploadedFiles = [];
+            updateFileDisplay();
+            document.getElementById('file-input').value = '';
+        }
+
+        // 添加成功上传提示
+        function showUploadSuccess(fileCount) {
+            const uploadZone = document.getElementById('file-upload-zone');
+            const originalIcon = uploadZone.querySelector('.upload-icon');
+            
+            // 临时显示成功状态
+            originalIcon.textContent = '✅';
+            uploadZone.style.borderColor = '#28a745';
+            uploadZone.style.background = '#d4edda';
+            
+            // 显示提示文本
+            const hint = uploadZone.querySelector('.upload-hint');
+            const originalText = hint.textContent;
+            hint.textContent = `成功上传 ${fileCount} 个文件！`;
+            hint.style.color = '#155724';
+            
+            // 2秒后恢复原状
+            setTimeout(() => {
+                originalIcon.textContent = '📁';
+                uploadZone.style.borderColor = '';
+                uploadZone.style.background = '';
+                hint.textContent = originalText;
+                hint.style.color = '';
+            }, 2000);
+        }
+
+        // 复制批量处理结果
+        async function copyBatchResults() {
+            const resultsDiv = document.getElementById('batch-results');
+            const resultContent = resultsDiv.querySelector('.result-content');
+            
+            if (!resultContent) {
+                alert('❌ 没有可复制的结果');
+                return;
+            }
+            
+            const resultsText = resultContent.textContent;
+            await copyToClipboard(resultsText, 'copy-results-btn', 'JSON批量处理结果');
+        }
+
+        // 添加快捷键支持
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+U 或 Cmd+U 快速上传
+            if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+                e.preventDefault();
+                triggerFileSelect();
+            }
+            
+            // Escape 键清除所有文件
+            if (e.key === 'Escape' && uploadedFiles.length > 0) {
+                clearUploadedFiles();
+            }
+            
+            // 已有的复制快捷键...
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                const activeElement = document.activeElement;
+                const resultsDiv = document.getElementById('batch-results');
+                
+                if (resultsDiv && resultsDiv.contains(activeElement)) {
+                    e.preventDefault();
+                    copyBatchResults();
+                }
+            }
+        });
+
+        // 文本补全结果复制功能
+        async function copyCompletionResult() {
+            const resultDiv = document.getElementById('completion-result');
+            const resultContent = resultDiv.querySelector('.result-content');
+            
+            if (!resultContent) {
+                alert('❌ 没有可复制的结果');
+                return;
+            }
+            
+            const resultText = resultContent.textContent;
+            await copyToClipboard(resultText, 'copy-completion-btn', '文本补全结果');
+        }
+
+        // 聊天对话复制功能
+        async function copyChatHistory() {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messages = messagesDiv.querySelectorAll('.message');
+            
+            if (messages.length === 0) {
+                alert('❌ 没有可复制的对话内容');
+                return;
+            }
+            
+            let chatText = '';
+            messages.forEach(message => {
+                const role = message.querySelector('.message-role').textContent;
+                const content = message.querySelector('.message-content').textContent;
+                chatText += `${role}: ${content}\n\n`;
+            });
+            
+            await copyToClipboard(chatText.trim(), 'copy-chat-btn', '聊天对话');
+        }
+
+        // 通用复制函数
+        async function copyToClipboard(text, buttonId, contentType) {
+            const copyBtn = document.getElementById(buttonId);
+            
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    // 回退到传统方法
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-999999px';
+                    textarea.style.top = '-999999px';
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+                
+                // 显示成功状态
+                if (copyBtn) {
+                    const originalText = copyBtn.textContent;
+                    const originalBg = copyBtn.style.backgroundColor;
+                    
+                    copyBtn.textContent = '✅ 已复制';
+                    copyBtn.style.backgroundColor = '#28a745';
+                    copyBtn.style.color = 'white';
+                    copyBtn.disabled = true;
+                    
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.backgroundColor = originalBg;
+                        copyBtn.disabled = false;
+                    }, 2000);
+                }
+                
+                console.log(`${contentType}复制成功`);
+                
+            } catch (error) {
+                console.error(`${contentType}复制失败:`, error);
+                alert('❌ 复制失败，请手动选择并复制文本');
+            }
+        }
+    </script>
+</body>
+</html> 
