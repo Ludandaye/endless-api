@@ -8,12 +8,12 @@ import time
 
 # 导入数据库相关模块
 from config import config
-from models import db
+from models import db, Conversation
 from database import (
     create_user, get_user_by_api_key, update_user_login,
     save_chat_message, get_or_create_conversation, save_completion,
     save_usage_record, get_user_conversations, get_conversation_messages,
-    clear_user_conversations
+    clear_user_conversations, create_custom_assistant
 )
 
 def create_app():
@@ -42,7 +42,11 @@ def get_openai_client():
     api_key = session.get('api_key')
     if not api_key:
         return None
-    return OpenAI(api_key=api_key)
+    try:
+        return OpenAI(api_key=api_key)
+    except Exception as e:
+        logger.error(f"创建OpenAI客户端失败: {str(e)}")
+        return None
 
 def get_current_user():
     """获取当前用户"""
@@ -54,11 +58,25 @@ def get_current_user():
 def verify_api_key(api_key):
     """验证API密钥是否有效"""
     try:
+        # 简化客户端初始化，避免参数冲突
         client = OpenAI(api_key=api_key)
+        
         # 尝试获取模型列表来验证密钥
-        client.models.list()
-        return True
-    except:
+        try:
+            models = client.models.list()
+            # 检查是否成功获取到模型列表
+            if models and hasattr(models, 'data') and len(models.data) > 0:
+                logger.info(f"API密钥验证成功，可用模型数量: {len(models.data)}")
+                return True
+            else:
+                logger.warning("API密钥验证失败：未获取到模型列表")
+                return False
+        except Exception as api_error:
+            logger.error(f"API调用失败: {str(api_error)}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"OpenAI客户端初始化失败: {str(e)}")
         return False
 
 @app.route('/')
@@ -141,7 +159,6 @@ def api_status():
     return jsonify({
         'logged_in': True,
         'status': 'running',
-        'api_key_masked': user.api_key_masked,
         'user_id': user.id,
         'last_login': user.last_login.isoformat() if user.last_login else None
     })
@@ -162,15 +179,26 @@ def api_chat():
     max_tokens = data.get('max_tokens', 1000)
     temperature = data.get('temperature', 0.7)
     images = data.get('images', [])
+    conversation_id = data.get('conversation_id')  # 新增：指定对话ID
     
     if not message:
         return jsonify({'error': '消息不能为空'}), 400
     
     try:
         # 获取或创建对话
-        conversation = get_or_create_conversation(user.id)
-        if not conversation:
-            return jsonify({'error': '创建对话失败'}), 500
+        if conversation_id:
+            # 使用指定的对话
+            conversation = Conversation.query.filter_by(
+                id=conversation_id, 
+                user_id=user.id
+            ).first()
+            if not conversation:
+                return jsonify({'error': '对话不存在'}), 404
+        else:
+            # 获取或创建新对话
+            conversation = get_or_create_conversation(user.id)
+            if not conversation:
+                return jsonify({'error': '创建对话失败'}), 500
         
         # 保存用户消息
         save_chat_message(user.id, conversation.id, 'user', message)
@@ -182,11 +210,21 @@ def api_chat():
         # 获取对话历史
         messages = get_conversation_messages(conversation.id)
         chat_messages = []
-        for msg in messages:
+        
+        # 如果有自定义system prompt，添加到消息开头
+        if conversation.system_prompt:
             chat_messages.append({
-                'role': msg.role,
-                'content': msg.content
+                'role': 'system',
+                'content': conversation.system_prompt
             })
+        
+        # 添加其他消息
+        for msg in messages:
+            if msg.role != 'system':  # 跳过已添加的system消息
+                chat_messages.append({
+                    'role': msg.role,
+                    'content': msg.content
+                })
         
         # 如果有图片且模型支持视觉，构建特殊的消息格式
         if images and model in ['gpt-4o', 'gpt-4-vision-preview', 'gpt-4o-mini']:
@@ -234,6 +272,8 @@ def api_chat():
         return jsonify({
             'response': assistant_message,
             'model': model,
+            'conversation_id': conversation.id,
+            'conversation_title': conversation.title,
             'usage': {
                 'total_tokens': tokens_used,
                 'prompt_tokens': response.usage.prompt_tokens,
@@ -372,13 +412,20 @@ def api_conversations():
         conversations = get_user_conversations(user.id)
         conv_list = []
         for conv in conversations:
-            conv_list.append({
+            conv_data = {
                 'id': conv.id,
                 'title': conv.title,
                 'created_at': conv.created_at.isoformat(),
                 'updated_at': conv.updated_at.isoformat(),
-                'message_count': len(conv.messages)
-            })
+                'message_count': len(conv.messages),
+                'is_custom_assistant': bool(conv.system_prompt)  # 是否为自定义助手
+            }
+            
+            # 如果是自定义助手，添加system_prompt预览
+            if conv.system_prompt:
+                conv_data['system_prompt_preview'] = conv.system_prompt[:100] + '...' if len(conv.system_prompt) > 100 else conv.system_prompt
+            
+            conv_list.append(conv_data)
         
         return jsonify({'conversations': conv_list})
         
@@ -386,5 +433,47 @@ def api_conversations():
         logger.error(f"获取对话列表错误: {e}")
         return jsonify({'error': f'获取对话失败: {str(e)}'}), 500
 
+@app.route('/api/create_assistant', methods=['POST'])
+def api_create_assistant():
+    """创建自定义对话助手"""
+    if 'api_key' not in session:
+        return jsonify({'error': '未登录'}), 401
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': '用户不存在'}), 401
+    
+    data = request.get_json()
+    user_request = data.get('request', '').strip()
+    model = data.get('model', 'gpt-4')
+    
+    if not user_request:
+        return jsonify({'error': '请描述您需要的助手功能'}), 400
+    
+    try:
+        # 创建自定义助手
+        api_key = session.get('api_key')
+        conversation = create_custom_assistant(user.id, user_request, api_key, model)
+        
+        if not conversation:
+            return jsonify({'error': '创建助手失败，请重试'}), 500
+        
+        logger.info(f"创建自定义助手 - 用户: {user.api_key_masked}, 需求: {user_request[:50]}...")
+        
+        return jsonify({
+            'success': True,
+            'conversation': {
+                'id': conversation.id,
+                'title': conversation.title,
+                'system_prompt': conversation.system_prompt,
+                'created_at': conversation.created_at.isoformat()
+            },
+            'message': f'已创建"{conversation.title}"助手'
+        })
+        
+    except Exception as e:
+        logger.error(f"创建助手错误: {e}")
+        return jsonify({'error': f'创建助手失败: {str(e)}'}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8080) 
+    app.run(debug=True, host='0.0.0.0', port=5000) 

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>endless-api</title>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="/static/js/assistant.js"></script>
     
     <style>
         /* 重置样式 */
@@ -64,6 +65,21 @@
             display: flex;
             align-items: center;
             gap: 6px;
+        }
+
+        .login-status {
+            font-weight: 500;
+            color: #28a745;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .login-status.offline {
+            color: #dc3545;
+            background: #f8d7da;
+            border-color: #f5c6cb;
         }
 
         .api-key-masked {
@@ -821,6 +837,184 @@
                 max-width: 95%;
             }
         }
+
+        /* 自定义助手样式 */
+        .assistant-textarea {
+            min-height: 150px;
+            font-family: inherit;
+        }
+
+        .assistant-controls {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .assistant-result {
+            min-height: 200px;
+        }
+
+        .assistant-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8f9fa;
+        }
+
+        .assistant-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .assistant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .assistant-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .assistant-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .assistant-preview {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .assistant-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .assistant-placeholder {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .success-result {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .success-result h4 {
+            color: #155724;
+            margin-bottom: 12px;
+        }
+
+        .assistant-info {
+            margin-bottom: 16px;
+        }
+
+        .assistant-info p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+
+        .system-prompt {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .assistant-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .error-result {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+            padding: 16px;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            color: #007bff;
+            padding: 20px;
+        }
+
+        .assistant-tips {
+            margin-top: 20px;
+            padding: 16px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border: 1px solid #bbdefb;
+        }
+
+        .assistant-tips h4 {
+            color: #1565c0;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .assistant-tips ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .assistant-tips li {
+            margin: 4px 0;
+            font-size: 13px;
+            color: #1976d2;
+        }
+
+        /* 响应式设计 */
+
+        /* 助手指示器样式 */
+        .assistant-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 12px;
+        }
+
+        .assistant-badge {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .chat-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 响应式设计 */
     </style>
 </head>
 <body>
@@ -833,8 +1027,8 @@
             </div>
             <div class="user-info">
                 <div class="api-key-info">
-                    <span>API密钥: </span>
-                    <span id="apiKeyMasked" class="api-key-masked">加载中...</span>
+                    <span>状态: </span>
+                    <span id="login-status" class="login-status">已登录</span>
                 </div>
                 <button onclick="logout()" class="logout-btn">退出登录</button>
             </div>
@@ -858,6 +1052,9 @@
                 <button onclick="switchTab('json-batch')" id="json-batch-tab" class="tab-button">
                     📊 JSON批量处理
                 </button>
+                <button onclick="switchTab('custom-assistant')" id="custom-assistant-tab" class="tab-button">
+                    🤖 自定义助手
+                </button>
             </nav>
         </div>
 
@@ -868,6 +1065,9 @@
                     <div class="card-header">
                         <h2 class="card-title">聊天对话</h2>
                         <div class="chat-actions">
+                            <div id="current-assistant-indicator" class="assistant-indicator" style="display: none;">
+                                <span class="assistant-badge">🤖 自定义助手</span>
+                            </div>
                             <button onclick="copyChatHistory()" id="copy-chat-btn" class="btn btn-copy" style="display: none;">
                                 📋 复制对话
                             </button>
@@ -1120,12 +1320,161 @@
                 </div>
             </div>
         </div>
+
+        <!-- 自定义助手面板 -->
+        <div id="custom-assistant-panel" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h2 class="card-title">创建自定义助手</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">助手需求描述</label>
+                        <textarea 
+                            id="assistant-request" 
+                            placeholder='请详细描述您需要的助手功能，例如：
+
+• 翻译助手：帮我翻译各种语言，支持中英日韩等
+• 编程助手：帮我写代码、调试、解释技术问题
+• 写作助手：帮我写文章、邮件、报告等
+• 学习助手：帮我制定学习计划、解答问题
+• 创意助手：帮我生成创意、头脑风暴
+• 数据分析助手：帮我分析数据、制作图表
+
+描述越详细，生成的助手越符合您的需求。' 
+                            class="form-textarea assistant-textarea"></textarea>
+                    </div>
+                    
+                    <div class="assistant-controls">
+                        <button onclick="testButtonClick()" class="btn btn-secondary">
+                            🧪 测试按钮点击
+                        </button>
+                        <button onclick="createCustomAssistant()" id="create-assistant-btn" class="btn btn-success">
+                            🤖 创建助手
+                        </button>
+                        <button onclick="clearAssistantForm()" class="btn btn-warning">
+                            🗑️ 清空表单
+                        </button>
+                        <button onclick="testAssistantFunctions()" class="btn btn-secondary">
+                            🔍 调试测试
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">创建结果
+                            <button onclick="copyAssistantResult()" id="copy-assistant-btn" class="btn btn-copy" style="display: none;">
+                                📋 复制结果
+                            </button>
+                        </label>
+                        <div id="assistant-result" class="result-area assistant-result" tabindex="0">
+                            <div class="result-placeholder">助手创建结果将显示在这里...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">助手设置</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">生成模型</label>
+                        <select id="assistant-model" class="form-select">
+                            <option value="gpt-4">GPT-4 (推荐)</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        </select>
+                        <small class="form-text">用于生成system prompt的模型</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">我的助手列表</label>
+                        <div id="assistant-list" class="assistant-list">
+                            <div class="assistant-placeholder">您创建的助手将显示在这里...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="assistant-tips">
+                        <h4>💡 使用提示</h4>
+                        <ul>
+                            <li>描述越详细，生成的助手越专业</li>
+                            <li>可以指定助手的性格、能力、工作方式</li>
+                            <li>创建后可以直接在聊天中使用</li>
+                            <li>每个助手都有独特的system prompt</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         // 主页面JavaScript
         let isLoading = false;
         let currentTab = 'chat';
+        let currentConversationId = null; // 当前对话ID
+
+        // 设置当前对话
+        function setCurrentConversation(conversationId) {
+            currentConversationId = conversationId;
+            console.log('设置当前对话ID:', conversationId);
+            
+            // 更新聊天输入框提示
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.placeholder = '现在您可以与自定义助手对话了...';
+            }
+            
+            // 显示助手指示器
+            const assistantIndicator = document.getElementById('current-assistant-indicator');
+            if (assistantIndicator) {
+                assistantIndicator.style.display = 'flex';
+            }
+        }
+
+        // 清除当前对话
+        function clearCurrentConversation() {
+            currentConversationId = null;
+            console.log('清除当前对话ID');
+            
+            // 恢复聊天输入框提示
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.placeholder = '输入您的消息...';
+            }
+            
+            // 隐藏助手指示器
+            const assistantIndicator = document.getElementById('current-assistant-indicator');
+            if (assistantIndicator) {
+                assistantIndicator.style.display = 'none';
+            }
+        }
+
+        // 测试自定义助手功能是否可用
+        function testAssistantFunctions() {
+            console.log('测试自定义助手功能...');
+            console.log('createCustomAssistant函数:', typeof createCustomAssistant);
+            console.log('clearAssistantForm函数:', typeof clearAssistantForm);
+            console.log('copyAssistantResult函数:', typeof copyAssistantResult);
+            console.log('loadAssistantList函数:', typeof loadAssistantList);
+            
+            // 检查DOM元素
+            const elements = [
+                'assistant-request',
+                'assistant-model', 
+                'assistant-result',
+                'create-assistant-btn',
+                'assistant-list'
+            ];
+            
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                console.log(`${id}元素:`, element ? '存在' : '不存在');
+            });
+        }
+
+        // 测试按钮点击功能
+        function testButtonClick() {
+            alert('✅ 按钮点击功能正常！');
+            console.log('按钮点击测试成功');
+        }
 
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
@@ -1140,6 +1489,9 @@
             
             // 初始化文件上传功能
             initFileUpload();
+            
+            // 测试自定义助手功能
+            setTimeout(testAssistantFunctions, 2000);
         });
 
         // 初始化页面
@@ -1228,14 +1580,16 @@
 
         // 更新用户信息
         function updateUserInfo(status) {
-            const apiKeyMasked = document.getElementById('apiKeyMasked');
+            const loginStatus = document.getElementById('login-status');
             
-            if (!apiKeyMasked) return;
+            if (!loginStatus) return;
             
-            if (status.logged_in && status.api_key_masked) {
-                apiKeyMasked.textContent = status.api_key_masked;
+            if (status.logged_in) {
+                loginStatus.textContent = '已登录';
+                loginStatus.className = 'login-status';
             } else {
-                apiKeyMasked.textContent = '未登录';
+                loginStatus.textContent = '未登录';
+                loginStatus.className = 'login-status offline';
             }
         }
 
@@ -1352,6 +1706,12 @@
                     message: fullMessage,
                     ...chatSettings
                 };
+                
+                // 如果有当前对话ID，添加到请求中
+                if (currentConversationId) {
+                    requestData.conversation_id = currentConversationId;
+                    console.log('使用自定义助手对话ID:', currentConversationId);
+                }
                 
                 // 如果有图片，添加图片数据
                 const imageFiles = uploadedFiles.filter(file => file.isImage);
@@ -1493,6 +1853,9 @@
                 if (copyBtn) {
                     copyBtn.style.display = 'none';
                 }
+                
+                // 清除当前对话ID
+                clearCurrentConversation();
                 
             } catch (error) {
                 handleApiError(error, 'clearHistory');

@@ -64,7 +64,82 @@ def save_chat_message(user_id, conversation_id, role, content, model=None, token
         print(f"保存消息失败: {e}")
         return None
 
-def get_or_create_conversation(user_id, title="新对话"):
+def create_custom_assistant(user_id, user_request, api_key, model='gpt-4'):
+    """创建自定义对话助手"""
+    try:
+        # 使用AI生成system prompt
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        
+        # 构建生成system prompt的提示词
+        system_generation_prompt = f"""
+请根据用户的需求，生成一个专业的system prompt来创建一个专门的AI助手。
+
+用户需求：{user_request}
+
+要求：
+1. 生成的system prompt应该明确、专业、实用
+2. 包含助手的具体角色、能力、行为规范
+3. 确保助手能够有效完成用户描述的任务
+4. 语言简洁明了，避免冗余
+
+请只返回system prompt内容，不要包含其他说明。
+"""
+
+        # 调用AI生成system prompt
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": system_generation_prompt}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        system_prompt = response.choices[0].message.content.strip()
+        
+        # 生成对话标题
+        title_generation_prompt = f"""
+根据以下需求，生成一个简洁的对话标题（不超过20字）：
+
+用户需求：{user_request}
+System Prompt：{system_prompt[:100]}...
+
+请只返回标题，不要包含其他内容。
+"""
+
+        title_response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": title_generation_prompt}
+            ],
+            max_tokens=50,
+            temperature=0.7
+        )
+        
+        title = title_response.choices[0].message.content.strip()
+        
+        # 创建对话
+        conversation = Conversation(
+            user_id=user_id,
+            title=title,
+            system_prompt=system_prompt
+        )
+        
+        db.session.add(conversation)
+        db.session.commit()
+        
+        # 保存system message
+        save_chat_message(user_id, conversation.id, 'system', system_prompt)
+        
+        return conversation
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"创建自定义助手失败: {e}")
+        return None
+
+def get_or_create_conversation(user_id, title="新对话", system_prompt=None):
     """获取或创建对话"""
     # 尝试获取用户最近的活跃对话
     conversation = Conversation.query.filter_by(
@@ -76,11 +151,17 @@ def get_or_create_conversation(user_id, title="新对话"):
         # 创建新对话
         conversation = Conversation(
             user_id=user_id,
-            title=title
+            title=title,
+            system_prompt=system_prompt
         )
         try:
             db.session.add(conversation)
             db.session.commit()
+            
+            # 如果有system prompt，保存为system message
+            if system_prompt:
+                save_chat_message(user_id, conversation.id, 'system', system_prompt)
+                
         except Exception as e:
             db.session.rollback()
             print(f"创建对话失败: {e}")
